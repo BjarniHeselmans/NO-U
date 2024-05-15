@@ -1,0 +1,4 @@
++---------------------------------------------------+
+IPadres attacker: ::1
+LocalHost, Geen geoloc mogelijk
+messages sent: 4857
