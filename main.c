@@ -6,6 +6,7 @@
 	#include <unistd.h> //for close
 	#include <stdlib.h> //for exit
 	#include <string.h> //for memset
+	#include <stdint.h>
 	void OSInit( void )
 	{
 		WSADATA wsaData;
@@ -32,44 +33,65 @@
 	#include <unistd.h> //for close
 	#include <stdlib.h> //for exit
 	#include <string.h> //for memset
+	#include <stdint.h>
 	void OSInit( void ) {}
 	void OSCleanup( void ) {}
 #endif
-#define debug
+
+//#define debug
+#define infinite
+
 int initialization();
 int connection( int internet_socket );
 void execution( int internet_socket );
 void cleanup( int internet_socket, int client_internet_socket );
 char ip_lookup[30];
+
+
 int main( int argc, char * argv[] )
 {
+	while(1){
+
+	
 	//////////////////
 	//Initialization//
 	//////////////////
+
 	OSInit();
+
 	int internet_socket = initialization();
-	printf("init\n");
+	//printf("init\n");
 	//////////////
 	//Connection//
 	//////////////
-	printf("starting internet socket\n");
+	printf("poort 22 staat open:\n");
 	int client_internet_socket = connection( internet_socket );
 	
 	/////////////
 	//Execution//
 	/////////////
+
 	execution( client_internet_socket );
+
+
 	////////////
 	//Clean up//
 	////////////
+
 	cleanup( internet_socket, client_internet_socket );
+
 	OSCleanup();
+	}
 	return 0;
 }
+
 int initialization()
 {
 	//Step 1.1
 	
+
+
+
 	struct addrinfo internet_address_setup;
 	struct addrinfo * internet_address_result;
 	memset( &internet_address_setup, 0, sizeof internet_address_setup );
@@ -82,6 +104,7 @@ int initialization()
 		fprintf( stderr, "getaddrinfo: %s\n", gai_strerror( getaddrinfo_return ) );
 		exit( 1 );
 	}
+
 	int internet_socket = -1;
 	struct addrinfo * internet_address_result_iterator = internet_address_result;
 	while( internet_address_result_iterator != NULL )
@@ -90,7 +113,7 @@ int initialization()
 		internet_socket = socket( internet_address_result_iterator->ai_family, internet_address_result_iterator->ai_socktype, internet_address_result_iterator->ai_protocol );
 		if( internet_socket == -1 )
 		{
-			perror( "socket" );
+			perror( "socket error" );
 		}
 		else
 		{
@@ -98,7 +121,7 @@ int initialization()
 			int bind_return = bind( internet_socket, internet_address_result_iterator->ai_addr, internet_address_result_iterator->ai_addrlen );
 			if( bind_return == -1 )
 			{
-				perror( "bind" );
+				perror( "bind error" );
 				close( internet_socket );
 			}
 			else
@@ -108,7 +131,7 @@ int initialization()
 				if( listen_return == -1 )
 				{
 					close( internet_socket );
-					perror( "listen" );
+					perror( "listen error" );
 				}
 				else
 				{
@@ -118,14 +141,18 @@ int initialization()
 		}
 		internet_address_result_iterator = internet_address_result_iterator->ai_next;
 	}
+
 	freeaddrinfo( internet_address_result );
+
 	if( internet_socket == -1 )
 	{
-		fprintf( stderr, "socket: no valid socket address found\n" );
+		fprintf( stderr, "socket: geen adres gevonden\n" );
 		exit( 2 );
 	}
+
 	return internet_socket;
 }
+
 int connection( int internet_socket )
 {
 	//Step 2.1
@@ -134,12 +161,12 @@ int connection( int internet_socket )
 	int client_socket = accept( internet_socket, (struct sockaddr *) &client_internet_address, &client_internet_address_length );
 	if( client_socket == -1 )
 	{
-		perror( "accept" );
+		perror( "accept error" );
 		close( internet_socket );
 		exit( 3 );
 	} 
-    
-        // Extracting the IP address
+
+			//finding out the ip address
 			char client_ip[INET6_ADDRSTRLEN]; // This can accommodate both IPv4 and IPv6 addresses
 			if (client_internet_address.ss_family == AF_INET)
 			{
@@ -153,34 +180,86 @@ int connection( int internet_socket )
 			}
 			else
 			{
-				fprintf(stderr, "Unknown address family\n");
+				fprintf(stderr, "geen herkend IPadres\n");
 				close(client_socket);
 				close(internet_socket);
 				exit(4);
 			}
-			printf("connected, ip: %s\n", client_ip);
+
+			printf("verbonden IPadres: %s\n", client_ip);
 			#ifndef debug
 			strcpy(ip_lookup, client_ip);
 			#endif
-			#ifdef debug
-			strcpy(ip_lookup, "94.110.92.242");
-			#endif
+
+			char BigLine[] = "+---------------------------------------------------+\n";
+			char logbuffer[1000];
+			FILE *logp;
+			logp = fopen("IPLOG.txt", "a");
+			if(logp != NULL){
+				snprintf(logbuffer, sizeof(logbuffer), "%sIPadres attacker: %s\n", BigLine, ip_lookup);
+				fprintf(logp, logbuffer);
+			}
+			fclose(logp);
 
 			char CLI_buffer[1000];
-			snprintf(CLI_buffer, sizeof(CLI_buffer),"curl http://ip-api.com/json/%s?fields=221", ip_lookup);
-
+			snprintf(CLI_buffer, sizeof(CLI_buffer),"curl http://ip-api.com/json/%s?fields=1561", ip_lookup);
 			FILE *fp;
     		char IP_LOG_ITEM[2000];
 
     		fp = popen(CLI_buffer, "r");
     		if (fp == NULL) {
-        	printf("Error opening cli buffer\n");
+        	printf("Error cli\n");
         	return client_socket;
     		}
-			
 			fgets(IP_LOG_ITEM, sizeof(IP_LOG_ITEM)-1, fp);
+			
+			system("clear");
+			printf(logbuffer);
 			printf("%s\n", IP_LOG_ITEM);
+
     		pclose(fp);
+            
+            if(IP_LOG_ITEM[1] != '}'){
+			char country[50];
+			char regionName[50];
+			char city[50];
+			char isp[50];
+			char org[50];
+				
+            //Parsing
+			logp = fopen("IPLOG.txt", "a");
+			if(logp != NULL){
+				char logbuffer[1000];
+				for (int i = 0; IP_LOG_ITEM[i] != '\0'; i++)
+			{
+				if(IP_LOG_ITEM[i]== ','){
+				fprintf(logp, "\n");
+				printf("\n");
+				}else if(IP_LOG_ITEM[i] == ':'){
+				fprintf(logp, ": ");
+				printf(": ");
+				}else if(IP_LOG_ITEM[i] == '{' || IP_LOG_ITEM[i] == '}'){
+				}else if(IP_LOG_ITEM[i] == '"' || IP_LOG_ITEM[i] == '"'){
+				}else{
+				fprintf(logp, "%c", IP_LOG_ITEM[i]);
+				printf("%c", IP_LOG_ITEM[i]);
+				}
+
+				
+			}
+			fprintf(logp, "\n");
+			 printf("\n");
+				
+			}
+			fclose(logp);
+			}else{
+			FILE *logp;
+			logp = fopen("IPLOG.txt", "a");
+			if(logp != NULL){
+				fprintf(logp, "LocalHost, No geoloc available\n");
+			}
+			fclose(logp);
+			}
 
 
 		return client_socket;
@@ -191,28 +270,77 @@ void execution( int internet_socket )
 	int number_of_bytes_received = 0;
 	char buffer[2000];
 	
+
 	
 		number_of_bytes_received = recv( internet_socket, buffer, ( sizeof buffer ) - 1, 0 );
 	if( number_of_bytes_received == -1 )
 	{
-		perror( "recv" );
+		perror( "recveive error" );
 	}
 	else
 	{
 		buffer[number_of_bytes_received] = '\0';
 		printf( "Received : %s\n", buffer );
 	}
-	char chartosend[] = "lorum ipsom dolor sit amet\n";
+	int sendcount=0;
+	#ifdef infinite
+	while(1)
+	{	
+	
+	#else
+	for (int i = 0; i < 1000; i++)
+	{	
+	#endif
+
+	char chartosend[] = 
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "\n"
+        "Ik ben Snappie, het kleine krokodilletje,\n"
+        "Kom uit Egypte, direct uit het ei\n"
+        "Eerst lag ik in een ei, in een zandbank,\n"
+        "Toen heb ik me losgebeten, ben ik vrij\n"
+        "\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "\n"
+        "Ik bijt graag, dat is mijn hobby\n"
+        "Ik bijt in alles wat ik kan pakken\n"
+        "Ik bijt in de mam, zelfs in de hand van papa\n"
+        "Ik bijt in de tenen, ook de neus\n"
+        "\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "\n"
+        "Als ik dat doe, dan slaap ik graag\n"
+        "En droom ik, dat ik later in de grote Nijl\n"
+        "Bijt zelfs in de grote buffel,\n"
+        "En in de neus van een nijlpaardv"
+        "\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "Snie-Sna-Snappie, Snappie, Snappie, Snap\n"
+        "\n";
 	int number_of_bytes_send = 0;
 	number_of_bytes_send = send( internet_socket, chartosend, strlen(chartosend), 0 );
 	if( number_of_bytes_send == -1 )
 	{
-		perror( "send" );
-
+		perror( "send schnappi lyrics error" );
+		break;
 	}else{
+	sendcount++;
 	printf("sent: %s\n", chartosend);
+	printf("messages sent: %d", sendcount);
 	}
-
+	}
+	char logbuffer[1000];
+	FILE *logp;
+	logp = fopen("IPLOG.txt", "a");
+			if(logp != NULL){
+				snprintf(logbuffer, sizeof(logbuffer), "messages sent: %d\n", sendcount);
+				fprintf(logp, logbuffer);
+			}
+			fclose(logp);
+	//http://ip-api.com/json/%s?fields=country,regionName,city,isp
 	}
 
 
@@ -222,8 +350,9 @@ void cleanup( int internet_socket, int client_internet_socket )
 	int shutdown_return = shutdown( client_internet_socket, SD_RECEIVE );
 	if( shutdown_return == -1 )
 	{
-		perror( "shutdown" );
+		perror( "cleanup error" );
 	}
+
 	//Step 4.1
 	close( client_internet_socket );
 	close( internet_socket );
