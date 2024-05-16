@@ -53,83 +53,87 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-int initialization() {
-    struct addrinfo hints, *res;
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    
-    int status = getaddrinfo("api.ipgeolocation.io", "20", &hints, &res);
-    if (status != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        exit(1);
-    }
+int initialization()
+{
+	//Step 1.1
+	struct addrinfo internet_address_setup;
+	struct addrinfo * internet_address_result;
+	memset( &internet_address_setup, 0, sizeof internet_address_setup );
+	internet_address_setup.ai_family = AF_UNSPEC;
+	internet_address_setup.ai_socktype = SOCK_STREAM;
+	int getaddrinfo_return = getaddrinfo( "::1", "22", &internet_address_setup, &internet_address_result );
+	if( getaddrinfo_return != 0 )
+	{
+		fprintf( stderr, "getaddrinfo: %s\n", gai_strerror( getaddrinfo_return ) );
+		exit( 1 );
+	}
 
-    int sockfd = -1;
-    struct addrinfo *p;
-    for (p = res; p != NULL; p = p->ai_next) {
-        sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (sockfd == -1) {
-            perror("socket");
-            continue;
-        }
+	int internet_socket = -1;
+	struct addrinfo * internet_address_result_iterator = internet_address_result;
+	while( internet_address_result_iterator != NULL )
+	{
+		//Step 1.2
+		internet_socket = socket( internet_address_result_iterator->ai_family, internet_address_result_iterator->ai_socktype, internet_address_result_iterator->ai_protocol );
+		if( internet_socket == -1 )
+		{
+			perror( "socket" );
+		}
+		else
+		{
+			//Step 1.3
+			int connect_return = connect( internet_socket, internet_address_result_iterator->ai_addr, internet_address_result_iterator->ai_addrlen );
+			if( connect_return == -1 )
+			{
+				perror( "connect" );
+				close( internet_socket );
+			}
+			else
+			{
+				break;
+			}
+		}
+		internet_address_result_iterator = internet_address_result_iterator->ai_next;
+	}
 
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("connect");
-            continue;
-        }
+	freeaddrinfo( internet_address_result );
 
-        break;
-    }
+	if( internet_socket == -1 )
+	{
+		fprintf( stderr, "socket: no valid socket address found\n" );
+		exit( 2 );
+	}
 
-    freeaddrinfo(res);
-
-    if (sockfd == -1) {
-        fprintf(stderr, "socket: no valid socket address found\n");
-        exit(2);
-    }
-
-    return sockfd;
+	return internet_socket;
 }
 
 void execution(int internet_socket) {
-    const char *request = "GET /ipgeo?apiKey=
-7d62ca6272534ea88de59891b49a1280
- HTTP/1.1\r\n"
+    const char *request = "GET /ipgeo?apiKey=7d62ca6272534ea88de59891b49a1280 HTTP/1.1\r\n"
                           "Host: api.ipgeolocation.io\r\n"
                           "Connection: close\r\n\r\n";
     
     int bytes_sent = send(internet_socket, request, strlen(request), 0);
     if (bytes_sent == -1) {
-        perror("send");
+        perror("send eror");
         return;
     }
 
     char buffer[1000];
     int bytes_received = 0;
-    FILE *log_file = fopen("IPLOG.txt", "w");
-    if (!log_file) {
-        perror("fopen");
-        return;
-    }
 
     while ((bytes_received = recv(internet_socket, buffer, sizeof buffer - 1, 0)) > 0) {
         buffer[bytes_received] = '\0';
-        fputs(buffer, log_file);
+        printf("Received : %s\n", buffer);
     }
 
     if (bytes_received == -1) {
-        perror("recv");
+        perror("recveive error");
     }
-
-    fclose(log_file);
 }
 
 void cleanup(int internet_socket) {
     int shutdown_return = shutdown(internet_socket, SD_SEND);
     if (shutdown_return == -1) {
-        perror("shutdown");
+        perror("cleanup error");
     }
 
     close(internet_socket);
