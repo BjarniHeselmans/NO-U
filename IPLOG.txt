@@ -2,3 +2,10 @@
 IPadres attacker: ::1
 LocalHost, Geen geoloc mogelijk
 messages sent: 4857
++---------------------------------------------------+
+IPadres attacker: ::1
+LocalHost, Geen geoloc mogelijk
+messages sent: 29485
++---------------------------------------------------+
+IPadres attacker: fe80::5459:4ab7:37b6:aa9
+LocalHost, Geen geoloc mogelijk
